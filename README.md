@@ -17,7 +17,9 @@ You must have python 3 installed and be comfortable with the command line.
 4. Output should be:
 
 `linting small.stan`
+
 `spaces needed around operator =:line number:10='  real<lower=0> sigma;'`
+
 `missing space after char 19',':line number:14='  alpha ~ normal(5,10);'`
 
 ## Modifying the linter
