@@ -2,9 +2,6 @@ import io
 import re
 import sys
 
-
-file_name = sys.argv[1]
-
 def white_space_comma(line):
   result = re.match("(.*,)[^ ].*", line)
   if (result != None):
@@ -26,7 +23,7 @@ def wrong_suffix (line):
   if (not line.endswith('.stan')):
     return("file name does not end in .stan")
 
-#see Variable Naming in Stan User's Guide, lowercase_w_underscore, 
+#see Variable Naming in Stan User's Guide, 
 #upper case single letter N allowed for size constants
 def lower_case_variables(line):
   variable_name = "\\s*([a-zA-Z0-9_]+)\\s*"
@@ -61,7 +58,7 @@ def no_tabs(line):
 
 #should be document level 
 def two_or_four_indent_spaces(line):
-  result = re.match("^(\\s*)",line)
+  result = re.match("^( *)",line)
   if (result != None and len(result.group(1)) % 2 != 0):
     return "indents should be two or four spaces, seeing {} spaces".format(len(result.group(1)))
   return None
@@ -76,30 +73,35 @@ def function_call_space(line):
   if(result != None):
     return "'{}' should be '{}{}'".format(result.group(0),result.group(1),result.group(2))
   return None
-  
+
+
+
 #arithmeticInfixOp ::= ('+' | '-' | '*' | '/' | '%' | '\' | '.*' | './')
 #logicalInfixOp :: ('||' | '&&' | '==' | '!=' | '<' | '<=' | '>' | '>=')
-
+#assignment_op ::= '<-' | '=' | '+=' | '-=' | '*=' | '/=' | '.*=' | './='
+#identifier ::= [a-zA-Z] [a-zA-Z0-9_]*
 def space_around_operators(line):
-  arg = "([\\d\\w]+)" #overgenerates but should be ok after sucessful compile
+  arg = "([a-zA-Z0-9_]+)"
   arithmetric_infix = "\\.\\*|\\./|[-+*/%]"
-  logic_infix = "\\|\\||&&|==|!=|<=|>=|>|<"
-  infix = "(" + arithmetric_infix + "|" + logic_infix + ")"
-  result = re.search(arg + infix + arg, line)
-  if (result != None):
-    return "spaces needed around operator {}".format(result.group(2))
-  result = re.search(arg + "\\s" + infix + arg, line)
-  if (result != None):
-    return "spaces needed around operator {}".format(result.group(2))
-  result = re.search(arg + infix + "\\s" + arg, line)
-  if (result != None):
-    return "spaces needed around operator {}".format(result.group(2))
+  logic_infix = r"\|\||&&|==|!=|<=|>=|>|<" 
+  assignment_infix = "=" #"<-|=|+=|-=|*=|/=|.*=|./="
+  infix = "(" + arithmetric_infix + "|" + logic_infix + "|" + assignment_infix + ")"
+  #print(infix)
+  result = re.match("^([^<>]*)<([^<>]*)>([^<>]*)",line) #"int real<lower=0,upper=42>" -> int real#lower=0,upper=42#
+  if (result):
+    line = result.group(1) + "#" + result.group(2) + "#" + result.group(3)
+  result = re.search(arg + r"(\s*)" + infix + r"(\s*)" + arg, line)
+  if (result != None and (result.group(2) == "" or result.group(4) == "")):
+    return "spaces needed around operator {}".format(result.group(3))
   return None
 
 #prefixOp ::= ('!' | '-' | '+' | '^')
 def space_after_prefix_operator(line):
-  arg = "([\\d\\w]+)" #overgenerates but should be ok after sucessful compile
-  result = re.search("([!-+^])\\s+" + arg, line)
+  arg = "([a-zA-Z0-9_]+)"
+  result = re.search(arg + r"\s+([-+^])\s+" + arg, line) 
+  if (result != None): #infix use of operator
+    return None
+  result = re.search(r"([!-+^])\s+" + arg, line)
   if (result != None):
     return "remove space after operator {}".format(result.group(1))
   return None
@@ -121,22 +123,84 @@ def space_after_comma(line):
   
 def windows_cr_lf(line):
   if (re.search("\\r",line)):
-    return "windows lf"
-  return None
+    return True
+  return False
   
+def comment_block_start(line):
+  if (re.match("^\\s*/[*]", line)):
+    return True
+  return False
+  
+def comment_block_end(line):
+  if (re.match("^.*[*]/",line)):
+    return True
+  return False
+  
+def line_comment(line):
+  if (re.match("^\\s*//",line)):
+    return True
+  return False
+  
+def line_comment_depreciated(line):
+  if (re.match("^\\s*#",line)):
+    return True
+  return False
 
-io.open(file_name, 'r', newline='').readlines()
-
-
-#with open(file_name) as file_in:
-with io.open(file_name, 'r', newline='') as file_in:
-  counter = 1
-  for line in file_in:
+def lint_file(file_name):
+  with io.open(file_name, 'r', newline='') as file_in:
+    counter = 1
+    in_comment_block = False
+    #if (wrong_suffix(file_in.suffix()) != None):
+    #  print(wrong_suffix(file_name))
+    for line in file_in:
+      num_plus_line = ":line number:{}='{}'".format(counter,line.rstrip())
     #need to skip comments
-    if (len(line) > 80):
-      print("line {} longer than 80 chars ,".format(counter))
-    if (white_space_comma(line) != None):
-        print(white_space_comma(line))
-    if (lower_case_variables(line) != None):
-        print(lower_case_variables(line))
-    counter += 1
+      if(comment_block_end(line)):
+        in_comment_block = False
+      if (in_comment_block):
+        continue
+      if(comment_block_start(line)):
+        in_comment_block = True
+        continue
+      
+      if(line_comment(line)):
+        continue
+      if(line_comment_depreciated(line)):
+        print("# line comment depreciated {}".format(num_plus_line))
+        continue
+      
+      if (white_space_comma(line) != None):
+        print(white_space_comma(line) + num_plus_line)
+      if (length_gt_80(line)!= None):
+        print(length_gt_80(line) + num_plus_line)
+      if(length_gt_65(line) != None):
+        print(length_gt_65(line) + num_plus_line)
+      if(lower_case_variables(line) != None):
+        print(lower_case_variables(line) + num_plus_line)
+      if(open_bracket_on_own_line(line) != None):
+        print(open_bracket_on_own_line(line) + num_plus_line)
+      if(multiple_statements_on_line(line) != None):
+        print(multiple_statements_on_line(line) + num_plus_line)
+      if(no_tabs(line) != None):
+        print(no_tabs(line) + num_plus_line)
+      if(two_or_four_indent_spaces(line) != None):
+        print(two_or_four_indent_spaces(line) + num_plus_line)
+      if(if_space(line) != None):
+        print(if_space(line) + num_plus_line)
+      if(function_call_space(line) != None):
+        print(function_call_space(line) + num_plus_line)
+      if(space_around_operators(line) != None):
+        print(space_around_operators(line) + num_plus_line)
+      if(space_after_prefix_operator(line) != None):
+        print(space_after_prefix_operator(line) + num_plus_line)
+      if(space_before_postfix_operator(line) != None):
+        print(space_before_postfix_operator(line) + num_plus_line)
+      #if (space_after_comma(line) != None):
+      #  print(space_after_comma(line) + num_plus_line)
+      if (windows_cr_lf(line)):
+        print(r"Line contains Widows line termination'\r\n', please change to unix style '\n'" + num_plus_line)
+      counter += 1
+
+file_name = sys.argv[1]
+print("linting " + file_name)
+lint_file(file_name)

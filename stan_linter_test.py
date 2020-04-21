@@ -23,7 +23,7 @@ def test_lower_case_variables():
   assert(lower_case_variables("int N;") == None)
   
 def test_open_bracket():
-  assert(open_bracket_on_own_line(" { ") == "Open bracket '{' not allowed on own line")
+  assert(open_bracket_on_own_line(" { \r\n") == "Open bracket '{' not allowed on own line")
   assert(open_bracket_on_own_line("if() {") == None)
   
 def test_multiple_statements():
@@ -36,6 +36,7 @@ def test_no_tabs():
 def test_indent_spacing():
   assert(two_or_four_indent_spaces("   ") == "indents should be two or four spaces, seeing 3 spaces")
   assert(two_or_four_indent_spaces("  ") == None)
+  assert(two_or_four_indent_spaces("\n") == None)
 
 def test_if_space():
   assert(if_space("  if(  ") == "'if(' should be 'if (")
@@ -48,10 +49,13 @@ def test_space_around_operators():
   assert(space_around_operators("3 *4") == "spaces needed around operator *")
   assert(space_around_operators("3* 4") == "spaces needed around operator *")
   assert(space_around_operators("3 * 4") == None)
+  assert space_around_operators("int<lower = 0> N;") == None
+  assert space_around_operators("real<lower=0> sigma;") == "spaces needed around operator ="
   
 def test_space_after_prefix_operator():
   assert(space_after_prefix_operator("! foo") == "remove space after operator !")
   assert(space_after_prefix_operator("!foo") == None)
+  assert space_after_prefix_operator("alpha + beta") == None
   
 def test_space_before_postfix_operator():
   assert(space_before_postfix_operator("foo '") == "remove space before operator '")
@@ -60,3 +64,32 @@ def test_space_before_postfix_operator():
 def test_space_after_comma():
   assert(space_after_comma("foo(a,b)") == "add space after comma in function call (a,b")
   assert(space_after_comma("foo(a, b)") == None)
+
+def test_comments():
+  assert(comment_block_start("/*") == True)
+  assert(comment_block_end("*/") == True)
+  assert(line_comment("//") == True)
+  assert(line_comment_depreciated("#") == True)
+  
+def test_windows_cr_lf():
+  assert(windows_cr_lf("line of text \r\n") == True)
+  assert(windows_cr_lf("line of text \n") == False)
+
+# end to end tests (e2e)
+def test_output_e2e(capsys,tmpdir):  
+  outfile = tmpdir.mkdir("sub").join("infix.stan")
+  with open(outfile,'w') as f:
+    f.write("a*b")
+  lint_file(outfile)
+  captured = capsys.readouterr()
+  assert captured.out.rstrip() == "spaces needed around operator *:line number:1='a*b'"
+  
+def test_windows_cr_lf_e2e(capsys,tmpdir):  
+  outfile = tmpdir.mkdir("sub").join("lf_cr.stan")
+  with open(outfile,'w') as f:
+    f.write('data {\r')
+  lint_file(outfile)
+  captured = capsys.readouterr()
+  assert captured.out.rstrip() == (r"Line contains Widows line termination'\r\n', "
+                                   r"please change to unix style '\n':line number:1='data {'")
+
