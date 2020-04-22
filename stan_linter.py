@@ -63,15 +63,20 @@ def two_or_four_indent_spaces(line):
     return "indents should be two or four spaces, seeing {} spaces".format(len(result.group(1)))
   return None
 
-def if_space(line):
-  if(re.search("if\\(",line)):
-    return "'if(' should be 'if ("
+def if_else_when_for_space(line):
+  result = re.search(r"(^|\s)(if|else|for|while)\(",line)
+  if(result != None):
+    match = result.group(2)
+    return "'{}(' should have space following {}, e.g. '{} ('".format(match,match,match)
   return None
   
 def function_call_space(line):
-  result = re.search("(\\w+)\\s+(\\(.*)",line)
+  nested = "^(if|else|for|while)"
+  result = re.search(r"(\w+)\s+(\(.*)",line)
   if(result != None):
-    return "'{}' should be '{}{}'".format(result.group(0),result.group(1),result.group(2))
+    if (re.match(nested,result.group(1))):
+      return None
+    return "'{}' has space between function call and ( '{}{}'".format(result.group(0),result.group(1),result.group(2))
   return None
 
 
@@ -185,8 +190,8 @@ def lint_file(file_name):
         print(no_tabs(line) + num_plus_line)
       if(two_or_four_indent_spaces(line) != None):
         print(two_or_four_indent_spaces(line) + num_plus_line)
-      if(if_space(line) != None):
-        print(if_space(line) + num_plus_line)
+      if(if_else_when_for_space(line) != None):
+        print(if_else_when_for_space(line) + num_plus_line)
       if(function_call_space(line) != None):
         print(function_call_space(line) + num_plus_line)
       if(space_around_operators(line) != None):

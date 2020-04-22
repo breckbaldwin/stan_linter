@@ -38,12 +38,14 @@ def test_indent_spacing():
   assert(two_or_four_indent_spaces("  ") == None)
   assert(two_or_four_indent_spaces("\n") == None)
 
-def test_if_space():
-  assert(if_space("  if(  ") == "'if(' should be 'if (")
+def test_if_else_when_for_space():
+  assert if_else_when_for_space("  if(  ")  == "'if(' should have space following if, e.g. 'if ('"
+  assert if_else_when_for_space('  for (n in 1:N)') == None
 
 def test_function_call_space():
-  assert(function_call_space("foo ()") == "'foo ()' should be 'foo()'")
-  
+  assert function_call_space("foo ()") == "'foo ()' has space between function call and ( 'foo()'"
+  assert function_call_space('  for (n in 1:N)') == None
+
 def test_space_around_operators():
   assert(space_around_operators("3*4") == "spaces needed around operator *")
   assert(space_around_operators("3 *4") == "spaces needed around operator *")
