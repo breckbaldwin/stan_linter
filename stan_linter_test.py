@@ -53,6 +53,7 @@ def test_space_around_operators():
   assert(space_around_operators("3 * 4") == None)
   assert space_around_operators("int<lower = 0> N;") == None
   assert space_around_operators("real<lower=0> sigma;") == "spaces needed around operator ="
+  assert(space_around_operators("foo +=4") == "spaces needed around operator +=")
   
 def test_space_after_prefix_operator():
   assert(space_after_prefix_operator("! foo") == "remove space after operator !")

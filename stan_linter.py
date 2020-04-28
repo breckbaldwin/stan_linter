@@ -87,11 +87,10 @@ def function_call_space(line):
 #identifier ::= [a-zA-Z] [a-zA-Z0-9_]*
 def space_around_operators(line):
   arg = "([a-zA-Z0-9_]+)"
-  arithmetric_infix = "\\.\\*|\\./|[-+*/%]"
+  arithmetric_infix = r"\.\*|\./|[-+*/%]"
   logic_infix = r"\|\||&&|==|!=|<=|>=|>|<" 
-  assignment_infix = "=" #"<-|=|+=|-=|*=|/=|.*=|./="
+  assignment_infix = r"=|\+=|<-|-=|\*=|/=|\.\*=|\./" 
   infix = "(" + arithmetric_infix + "|" + logic_infix + "|" + assignment_infix + ")"
-  #print(infix)
   result = re.match("^([^<>]*)<([^<>]*)>([^<>]*)",line) #"int real<lower=0,upper=42>" -> int real#lower=0,upper=42#
   if (result):
     line = result.group(1) + "#" + result.group(2) + "#" + result.group(3)
